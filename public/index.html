@@ -82,7 +82,7 @@ function openModal(x){$("#modalBox").innerHTML=x;$("#modal").classList.remove("h
 function closeModal(){$("#modal").classList.add("hidden")}
 function go(p){state.page=p;render()}
 function bind(){document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>go(b.dataset.page));$("#signInBtn").onclick=login;$("#heroSign").onclick=login}
-async function login(){const {error}=await supabaseClient.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});if(error)toast(error.message)}
+async function login(){const {error}=await supabaseClient.auth.signInWithOAuth({provider:"google",options:{redirectTo:"https://growth-elevation.vercel.app"}});if(error)toast(error.message)}
 async function bootstrap(){
  const {data:{session}}=await supabaseClient.auth.getSession();
  if(session?.user){
