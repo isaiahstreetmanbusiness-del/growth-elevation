@@ -1,0 +1,12 @@
+{
+  "users": [],
+  "assignments": [],
+  "submissions": [],
+  "admins": [
+    {
+      "name": "Mr. Isaiah",
+      "email": "isaiahstreetmanbusiness@gmail.com",
+      "role": "head_admin"
+    }
+  ]
+}

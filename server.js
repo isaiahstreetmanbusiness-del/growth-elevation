@@ -1,0 +1,10 @@
+const express=require("express"), path=require("path"), fs=require("fs");
+const app=express(); app.use(express.json({limit:"10mb"})); app.use(express.static(path.join(__dirname,"public")));
+const DB=path.join(__dirname,"data.json");
+if(!fs.existsSync(DB))fs.writeFileSync(DB,JSON.stringify({users:[],assignments:[],submissions:[],admins:[]},null,2));
+const read=()=>JSON.parse(fs.readFileSync(DB)); const write=d=>fs.writeFileSync(DB,JSON.stringify(d,null,2));
+app.get("/api/health",(req,res)=>res.json({ok:true,app:"Growth & Elevation"}));
+app.get("/api/state",(req,res)=>res.json(read()));
+app.post("/api/state",(req,res)=>{write(req.body);res.json({ok:true})});
+app.get("*",(req,res)=>res.sendFile(path.join(__dirname,"public/index.html")));
+app.listen(process.env.PORT||3000,()=>console.log("Growth & Elevation running"));

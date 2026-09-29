@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>Growth & Elevation — College Readiness</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#111827;--muted:#667085;--line:#e5e7eb;--accent:#4f46e5;--accent2:#7c3aed;--good:#15803d;--warn:#b45309}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,#111827,#312e81);color:#fff;padding:22px 5%;display:flex;justify-content:space-between;gap:20px;align-items:center;position:sticky;top:0;z-index:5}
+.brand b{font-size:1.35rem}.brand small{display:block;opacity:.8;margin-top:3px}.who{display:flex;gap:10px;align-items:center}
+button,.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}.primary{background:var(--accent);color:white}.secondary{background:#eef2ff;color:#3730a3}.danger{background:#fee2e2;color:#991b1b}.ghost{background:transparent;color:inherit;border:1px solid #ffffff55}
+nav{background:#fff;border-bottom:1px solid var(--line);padding:9px 5%;display:flex;gap:7px;overflow:auto;position:sticky;top:86px;z-index:4}nav button{background:transparent;color:#475467;white-space:nowrap}nav button.active{background:#eef2ff;color:#3730a3}
+main{max-width:1250px;margin:auto;padding:28px 5% 60px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 5px 18px #11182708}.kpi{font-size:2rem;font-weight:800}.muted{color:var(--muted)}h1,h2,h3{margin-top:0}.section{margin:25px 0}.list{display:grid;gap:10px}.row{display:flex;justify-content:space-between;gap:15px;align-items:center;border-bottom:1px solid var(--line);padding:13px 0}.row:last-child{border:0}.pill{padding:5px 9px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:.8rem;font-weight:700}.success{background:#dcfce7;color:#166534}.warning{background:#fef3c7;color:#92400e}
+textarea,input,select{width:100%;border:1px solid #d0d5dd;border-radius:10px;padding:12px;font:inherit;background:white}textarea{min-height:240px;resize:vertical}.form{display:grid;gap:12px;max-width:650px}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:15px}.hidden{display:none!important}.empty{text-align:center;padding:45px;color:var(--muted)}.week{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.day{padding:14px;border:1px solid var(--line);border-radius:12px;background:#fafafa;cursor:pointer}.day:hover{border-color:var(--accent);background:#f5f3ff}.modal{position:fixed;inset:0;background:#11182788;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}.modalbox{background:white;border-radius:18px;max-width:700px;width:100%;max-height:90vh;overflow:auto;padding:24px}.toast{position:fixed;right:20px;bottom:20px;background:#111827;color:#fff;padding:12px 16px;border-radius:10px;z-index:30}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.twocol{grid-template-columns:1fr}.week{grid-template-columns:1fr}.who span{display:none}}
+</style>
+</head>
+<body>
+<header>
+<div class="brand"><b>Growth & Elevation</b><small>College Readiness • Grade 12 English</small></div>
+<div class="who"><span id="userLabel">Not signed in</span><button class="ghost" id="signInBtn">Sign in with Google</button></div>
+</header>
+<nav id="nav" class="hidden">
+<button data-page="home">Home</button><button data-page="course">Course</button><button data-page="assignments">Assignments</button><button data-page="grades">Grades</button><button data-page="resources">Resources</button><button data-page="admin" id="adminNav" class="hidden">Admin Center</button>
+</nav>
+<main id="app"><div class="card empty"><h2>Welcome to Growth & Elevation</h2><p>Sign in with your school Google account to enter College Readiness.</p><button class="primary" id="heroSign">Sign in with Google</button></div></main>
+<div id="modal" class="modal hidden"><div class="modalbox" id="modalBox"></div></div>
+<div id="toast" class="toast hidden"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://srkimabodmmwzvaalkgt.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_q8sbQ1m6QxTvGdGiRdU0XQ_Nuu25JBL";
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const state={user:null,page:"home",assignments:[],students:[],submissions:[],admin:false};
+const curriculum=["Rhetorical Foundations","Argument & Claims","Counterargument & Refutation","Rhetorical Analysis","Close Reading","Character & Conflict","Theme & Symbolism","Comparative Literature","Poetry & Voice","Thesis & Structure","Evidence & Commentary","Revision & Editing","Research Questions","Source Evaluation","Synthesis & Citation","Media Literacy","Speaking & Presentation","Portfolio & Reflection"];
+const $=s=>document.querySelector(s);
+function toast(x){$("#toast").textContent=x;$("#toast").classList.remove("hidden");setTimeout(()=>$("#toast").classList.add("hidden"),2200)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function loadData(){
+  const {data: assignments,error: ae}=await supabaseClient.from("assignments").select("*").order("created_at",{ascending:false});
+  if(ae) console.error(ae); state.assignments=(assignments||[]).map(a=>({...a,id:a.id,points:a.points,due:a.due_date}));
+  const {data: subs,error: se}=await supabaseClient.from("submissions").select("*").order("created_at",{ascending:false});
+  if(se) console.error(se); state.submissions=(subs||[]).map(s=>({id:s.id,assignmentId:s.assignment_id,studentId:s.student_id,content:s.content,status:s.status,grade:s.grade,feedback:s.feedback,points:(state.assignments.find(a=>a.id===s.assignment_id)||{}).points,submittedAt:s.submitted_at}));
+  if(state.admin){
+    const {data: profiles,error: pe}=await supabaseClient.from("profiles").select("id,full_name,email,role").order("full_name");
+    if(pe) console.error(pe); state.students=(profiles||[]).filter(p=>p.role!=="admin").map(p=>({id:p.id,name:p.full_name||"Student",email:p.email}));
+  }
+}
+async function render(){
+ if(!state.user){$("#nav").classList.add("hidden");return}
+ $("#nav").classList.remove("hidden");$("#userLabel").textContent=state.user.name+(state.admin?" • Head Admin":" • Student");
+ document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
+ if(state.admin)$("#adminNav").classList.remove("hidden"); else $("#adminNav").classList.add("hidden");
+ const pages={home:home,course:course,assignments:assignments,grades:grades,resources:resources,admin:admin};
+ $("#app").innerHTML=(pages[state.page]||home)(); bind();
+}
+function home(){return `<div class="section"><h1>Welcome, ${esc(state.user.name)}</h1><p class="muted">College Readiness • Grade 12 English</p></div>
+<div class="grid"><div class="card"><div class="muted">Assignments</div><div class="kpi">${state.assignments.length}</div></div><div class="card"><div class="muted">Submitted</div><div class="kpi">${state.submissions.filter(x=>x.studentId===state.user.id).length}</div></div><div class="card"><div class="muted">Course Units</div><div class="kpi">18</div></div><div class="card"><div class="muted">Status</div><div class="kpi">Active</div></div></div>
+<div class="section card"><h2>What’s next?</h2><div class="row"><span>Continue your English lessons</span><button class="secondary" onclick="go('course')">Open Course</button></div><div class="row"><span>Check work assigned by Mr. Isaiah</span><button class="secondary" onclick="go('assignments')">View Assignments</button></div></div>`}
+function course(){return `<h1>Grade 12 English Course</h1><p class="muted">Work through the units at your own pace.</p>${curriculum.map((x,i)=>`<div class="card section"><div class="row"><div><h3>Unit ${i+1}: ${x}</h3><span class="muted">College Readiness • Lesson set ${i+1}</span></div><button class="primary" onclick="lesson(${i})">Open Unit</button></div></div>`).join("")}`}
+function assignments(){return `<div class="row"><div><h1>Assignments</h1><p class="muted">Submit your work here. Your teacher can review it from Admin Center.</p></div>${state.admin?'<button class="primary" onclick="newAssignment()">+ New Assignment</button>':''}</div>
+<div class="list">${state.assignments.length?state.assignments.map(a=>{let s=state.submissions.find(x=>x.assignmentId===a.id&&x.studentId===state.user.id);return `<div class="card"><div class="row"><div><h3>${esc(a.title)}</h3><p class="muted">${esc(a.description||"")}</p><span class="pill">${a.points} pts</span></div><button class="secondary" onclick="openAssignment('${a.id}')">${s?'Review / Edit':'Open & Submit'}</button></div></div>`}).join(""):'<div class="card empty">No assignments have been published yet.</div>'}</div>`}
+function grades(){let mine=state.submissions.filter(x=>x.studentId===state.user.id);return `<h1>My Grades</h1><div class="card"><div class="list">${mine.length?mine.map(s=>`<div class="row"><div><b>${esc((state.assignments.find(a=>a.id===s.assignmentId)||{}).title||"Assignment")}</b><div class="muted">${s.status}${s.feedback?" • "+esc(s.feedback):""}</div></div><b>${s.grade??"—"} / ${s.points??""}</b></div>`).join(""):'<div class="empty">No graded submissions yet.</div>'}</div></div>`}
+function resources(){return `<h1>Resource Center</h1><div class="grid"><div class="card"><h3>Essay Toolkit</h3><p>Thesis, evidence, commentary, organization and revision checklists.</p></div><div class="card"><h3>Research Toolkit</h3><p>Source evaluation, synthesis and citation workflow.</p></div><div class="card"><h3>Reading Toolkit</h3><p>Close reading, rhetorical analysis and annotation prompts.</p></div><div class="card"><h3>Presentation Toolkit</h3><p>Speaking structure, delivery and presentation planning.</p></div></div>`}
+function admin(){let graded=state.submissions.filter(x=>x.grade!=null);return `<h1>Admin Center</h1><p class="muted">Head Admin: Mr. Isaiah</p><div class="grid"><div class="card"><div class="muted">Students</div><div class="kpi">${state.students.length}</div></div><div class="card"><div class="muted">Assignments</div><div class="kpi">${state.assignments.length}</div></div><div class="card"><div class="muted">Submissions</div><div class="kpi">${state.submissions.length}</div></div><div class="card"><div class="muted">Graded</div><div class="kpi">${graded.length}</div></div></div>
+<div class="section card"><div class="row"><h2>Students</h2><button class="secondary" onclick="addAdmin()">+ Add Admin Slot</button></div><div class="list">${state.students.length?state.students.map(st=>`<div class="row"><div><b>${esc(st.name)}</b><div class="muted">${esc(st.email)}</div></div><button class="secondary" onclick="studentView('${st.id}')">View Work</button></div>`).join(""):'<div class="empty">Students appear here after they sign in.</div>'}</div></div>
+<div class="section card"><h2>Recent Submissions</h2><div class="list">${state.submissions.length?state.submissions.slice().reverse().map(s=>{let st=state.students.find(x=>x.id===s.studentId),a=state.assignments.find(x=>x.id===s.assignmentId);return `<div class="row"><div><b>${esc(st?.name||"Student")}</b><div class="muted">${esc(a?.title||"Assignment")} • ${s.status}</div></div><button class="primary" onclick="review('${s.id}')">Review</button></div>`}).join(""):'<div class="empty">No submissions yet.</div>'}</div></div>`}
+function lesson(i){openModal(`<h2>Unit ${i+1}: ${curriculum[i]}</h2><p>Objective: build college-ready reading, writing, research and communication skills.</p><div class="card"><h3>Mini Lesson</h3><p>Read a teacher-selected passage and identify the author’s purpose, central claim, evidence and choices. Write a short explanation connecting the evidence to the author’s purpose.</p></div><textarea id="lessonText" placeholder="Your response..."></textarea><br><button class="primary" onclick="saveLesson(${i})">Save My Work</button>`)}
+function saveLesson(i){toast("Lesson work saved to this session.");closeModal()}
+function newAssignment(){openModal(`<h2>Create Assignment</h2><div class="form"><input id="aTitle" placeholder="Assignment title"><textarea id="aDesc" placeholder="Instructions"></textarea><div class="twocol"><input id="aPoints" type="number" value="100" placeholder="Points"><input id="aDue" type="date"></div><button class="primary" onclick="createAssignment()">Publish Assignment</button></div>`)}
+async function createAssignment(){let a={title:$("#aTitle").value,description:$("#aDesc").value,points:Number($("#aPoints").value)||100,due_date:$("#aDue").value||null,published:true,created_by:state.user.id};if(!a.title)return toast("Add a title.");const {error}=await supabaseClient.from("assignments").insert(a);if(error)return toast(error.message);closeModal();await loadData();render();toast("Assignment published.")}
+function openAssignment(id){let a=state.assignments.find(x=>x.id===id),s=state.submissions.find(x=>x.assignmentId===id&&x.studentId===state.user.id);openModal(`<h2>${esc(a.title)}</h2><p>${esc(a.description||"")}</p><p class="muted">${a.points} points ${a.due?"• Due "+a.due:""}</p><textarea id="submissionText" placeholder="Paste or write your work here...">${esc(s?.content||"")}</textarea><br><button class="primary" onclick="submit('${id}')">${s?'Update Submission':'Submit Work'}</button>`)}
+async function submit(id){let existing=state.submissions.find(x=>x.assignmentId===id&&x.studentId===state.user.id),a=state.assignments.find(x=>x.id===id);let payload={assignment_id:id,student_id:state.user.id,content:$("#submissionText").value,status:"Submitted",submitted_at:new Date().toISOString()};let result=existing?await supabaseClient.from("submissions").update(payload).eq("id",existing.id):await supabaseClient.from("submissions").insert(payload);if(result.error)return toast(result.error.message);closeModal();await loadData();render();toast("Work submitted to Mr. Isaiah.")}
+function review(id){let s=state.submissions.find(x=>x.id===id),st=state.students.find(x=>x.id===s.studentId),a=state.assignments.find(x=>x.id===s.assignmentId);openModal(`<h2>Review Submission</h2><p><b>${esc(st?.name)}</b> — ${esc(a?.title)}</p><div class="card" style="white-space:pre-wrap">${esc(s.content)}</div><div class="form"><input id="grade" type="number" min="0" max="${a?.points||100}" value="${s.grade??''}" placeholder="Grade"><textarea id="feedback" placeholder="Feedback">${esc(s.feedback||"")}</textarea><button class="primary" onclick="grade('${id}')">Save Grade & Feedback</button></div>`)}
+async function grade(id){let payload={grade:Number($("#grade").value),feedback:$("#feedback").value,status:"Graded",graded_at:new Date().toISOString()};const {error}=await supabaseClient.from("submissions").update(payload).eq("id",id);if(error)return toast(error.message);closeModal();await loadData();render();toast("Grade and feedback saved.")}
+function studentView(id){let st=state.students.find(x=>x.id===id),mine=state.submissions.filter(x=>x.studentId===id);openModal(`<h2>${esc(st.name)}</h2><p class="muted">${esc(st.email)}</p>${mine.length?mine.map(s=>{let a=state.assignments.find(x=>x.id===s.assignmentId);return `<div class="row"><div><b>${esc(a?.title||"Assignment")}</b><div class="muted">${s.status}</div></div><button class="secondary" onclick="review('${s.id}')">Review</button></div>`}).join(""):'<div class="empty">No submissions.</div>'}`)}
+function addAdmin(){openModal(`<h2>Additional Admin</h2><p class="muted">Additional staff admins can be added later by their approved Google email.</p><input id="adminEmail" placeholder="School Google email"><br><br><button class="primary" onclick="saveAdmin()">Save</button></div>`)}
+async function saveAdmin(){const email=$("#adminEmail").value.trim().toLowerCase();if(!email)return toast("Enter an email.");toast("Admin invitations will be connected in the next setup step.");closeModal()}
+function openModal(x){$("#modalBox").innerHTML=x;$("#modal").classList.remove("hidden")}
+function closeModal(){$("#modal").classList.add("hidden")}
+function go(p){state.page=p;render()}
+function bind(){document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>go(b.dataset.page));$("#signInBtn").onclick=login;$("#heroSign").onclick=login}
+async function login(){const {error}=await supabaseClient.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});if(error)toast(error.message)}
+async function bootstrap(){
+ const {data:{session}}=await supabaseClient.auth.getSession();
+ if(session?.user){
+   const u=session.user; const {data: profile}=await supabaseClient.from("profiles").select("full_name,email,role").eq("id",u.id).maybeSingle();
+   state.user={id:u.id,name:profile?.full_name||u.user_metadata?.full_name||u.email?.split("@")[0]||"Student",email:profile?.email||u.email};
+   state.admin=profile?.role==="admin";
+   await loadData(); await render();
+ }
+ supabaseClient.auth.onAuthStateChange(async (_event,session2)=>{
+   if(session2?.user){
+     const u=session2.user; const {data: profile}=await supabaseClient.from("profiles").select("full_name,email,role").eq("id",u.id).maybeSingle();
+     state.user={id:u.id,name:profile?.full_name||u.user_metadata?.full_name||u.email?.split("@")[0]||"Student",email:profile?.email||u.email}; state.admin=profile?.role==="admin"; await loadData(); await render();
+   } else {state.user=null;state.admin=false;render()}
+ });
+}
+window.closeModal=closeModal;window.go=go;window.lesson=lesson;window.newAssignment=newAssignment;window.createAssignment=createAssignment;window.openAssignment=openAssignment;window.submit=submit;window.review=review;window.grade=grade;window.studentView=studentView;window.addAdmin=addAdmin;window.saveAdmin=saveAdmin;
+bootstrap();
+</script>
+</body></html>
